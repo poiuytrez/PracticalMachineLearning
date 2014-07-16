@@ -1,0 +1,66 @@
+---
+title: "Qualitative Activity Recognition"
+output: html_document
+---
+
+Traditionnaly, prediction has been applied on which activity performs. In this document we will describe how to predict how well an activity has been performed. All the measurements comes from the team who wrote the original paper: [Qualitative Activity Recognition of Weight Lifting Exercises](http://groupware.les.inf.puc-rio.br/public/papers/2013.Velloso.QAR-WLE.pdf). 
+
+## Computer Specification ##
+
+We ran all the R code on a Macbook Air mid-2011 running OS X 10.9 with R 3.1.0. The model took about 10 minutes to be generated.
+
+##Loading and cleaning the data##
+
+The training data can be downloaded from: https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+```{r}
+# Load the dataset
+dataset <- read.csv("pml-training.csv")
+```
+
+We need to clean the dataset by removing columns with too many NAs and columns which are not direct measurements. 
+
+```{r}
+# Keep only some columns 
+keep <- c("roll_belt","pitch_belt","yaw_belt","total_accel_belt","gyros_belt_x","gyros_belt_y","gyros_belt_z","accel_belt_x","accel_belt_y","accel_belt_z","magnet_belt_x","magnet_belt_y","magnet_belt_z","roll_arm","pitch_arm","yaw_arm","total_accel_arm","gyros_arm_x","gyros_arm_y","gyros_arm_z","accel_arm_x","accel_arm_y","accel_arm_z","magnet_arm_x","magnet_arm_y","magnet_arm_z","roll_dumbbell","pitch_dumbbell","yaw_dumbbell","total_accel_dumbbell","gyros_dumbbell_x","gyros_dumbbell_y","gyros_dumbbell_z","accel_dumbbell_x","accel_dumbbell_y","accel_dumbbell_z","magnet_dumbbell_x","magnet_dumbbell_y","magnet_dumbbell_z","roll_forearm","pitch_forearm","yaw_forearm","total_accel_forearm","gyros_forearm_x","gyros_forearm_y","gyros_forearm_z","accel_forearm_x","accel_forearm_y","accel_forearm_z","magnet_forearm_x","magnet_forearm_y","magnet_forearm_z","classe")
+dataset <- dataset[,keep]
+
+```
+
+## Study design 
+
+We now need to split the data between a training and a test sample. We will take 60% of our data to do training and 40% for testing purposes. 
+
+```{r}
+library(caret)
+inTrain <- createDataPartition(y=dataset$classe, p=0.6, list=F)
+training <- dataset[inTrain,]
+testing <- dataset[-inTrain,]
+```
+
+## Machine Learning
+
+We chose the Random Forest algorithm to train our model. It is currently one of the best prediction algorithm. With Random Forest, there is no need for cross validation. The drawbacks of this algorithm are the speed, the interpretability and overfitting. As the number of observation in this dataset is not very large, we can use it. 
+
+```{r}
+model <- train(classe ~ ., data=training, method="rf", ntree=50)
+```
+
+```{r}
+model$finalModel
+trainingPredictions <- predict(model$finalModel, training[,-53])
+confusionMatrix(trainingPredictions, training[,53])
+```
+
+We have an estimated in sample error rate of 0.04%. The model seems to capture most of the variation of the data. We hope that there is not too much overfitting. We now test our model on our test data:
+```{r}
+testPredictions <- predict(model$finalModel, testing[,-53])
+confusionMatrix(testPredictions, testing[,53])
+
+```
+
+We have an estimated out of sample error rate of 1.47% (1-Accuracy). This is a good result.
+
+## Conclusion
+
+Random forest seems to work pretty well for our need. We can use this random forest model to predict new values. It might also be interesting to use other machine learning algorithms on this data.
